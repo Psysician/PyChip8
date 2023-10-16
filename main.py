@@ -112,6 +112,18 @@ class Chip8:
                         case 0:
                             pass
                             
+                # 9xy0 skip instrction if Vx != Vy
+                case x if (x & 0xF000) >> 12 == 9:
+                    vX = x << 4 >> 12
+                    vY = x << 8 >> 12
+                    if self.regV[vX] != self.regV[vY]:
+                        self.regPC += 4
+                    else:
+                        self.regPC += 2
+
+                # Annn set reg I to nnn
+                case x if (x & 0xF000) >> 12 == 0xA:
+                    self.regI = x << 4 >> 4
 
                 case x:
                     raise Exception("unimplemented: ", hex(x)[2:])
