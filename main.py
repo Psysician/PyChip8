@@ -167,10 +167,31 @@ class Chip8:
                 case x if (x & 0xF0FF) == 0xE0A1:
                       pass
                 
-                case x if (x & 0xF0FF) == 0xF007:
+                # Fx07
+                case x if (x & 0xF0FF) == 0xF007: 
                     vX = x << 4 >> 12
                     self.regV[vX] = self.delayT
+                
+                # Fx0A
+                case x if (x & 0xF0FF) == 0xF00A:
+                    pass
 
+                # Fx15 Vx = Delay timer     Ich hab keine ahnung ob das hier sinn macht
+                #                           mein ausbilder zwingt mich übrigens dazu meine docs, kommentare und generell alles auf deutsch zu schreiben
+                case x if (x & 0xF0FF) == 0xF015:
+                    Vx = x << 4 >> 12
+                    self.delayT = Vx
+
+                # Fx18
+                case x if (x & 0xF0FF) == 0xF018:
+                    vX = x << 4 >> 12
+                    self.soundT = Vx
+
+                # Fx1E regI 0 I + Vx    noch weniger plan 
+                case x if (x & 0xF0FF) == 0xF01E:
+                    vX = x << 4 >> 12
+                    self.regI = self.regI + vX
+                
                 
 
                 case x:
