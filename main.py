@@ -71,6 +71,48 @@ class Chip8:
                     else:
                         self.regPC += 2
 
+                # 4xkk skip instruction if Vx != kk
+                case x if (x & 0xF000) >> 12 == 4:
+                    vX = x << 4 >> 12
+                    kk = x << 8 >> 8
+                    if self.regV[vX] != kk:
+                        self.regPC += 4
+                    else:
+                        self.regPC += 2
+
+                # 5xy0 skip instruction if Vx == Vy
+                case x if (x & 0xF000) >> 12 == 5:
+                    vX = x << 4 >> 12
+                    vY = x << 8 >> 12
+                    if self.regV[vX] == self.regV[vY]:
+                        self.regPC += 4
+                    else:
+                        self.regPC += 2
+
+                # 6xkk set Vx = kk
+                case x if (x & 0xF000) >> 12 == 6:
+                    vX = x << 4 >> 12
+                    kk = x << 8 >> 8
+                    self.regV[vX] = kk
+
+                # 7xkk add kk to Vx
+                case x if (x & 0xF000) >> 12 == 7:
+                    vX = x << 4 >> 12
+                    kk = x << 8 >> 8
+                    self.regV[vX] += kk
+
+                # 8xy? operators
+                case x if (x & 0xF000) >> 12 == 5:
+                    vX = x << 4 >> 12
+                    vY = x << 8 >> 12
+
+                    op = x & 0xFFF0
+
+                    match op:
+                        case 0:
+                            pass
+                            
+
                 case x:
                     raise Exception("unimplemented: ", hex(x)[2:])
 
