@@ -1,42 +1,44 @@
-import sys
-import numpy as np
+import sys, random
 import pygame as pg
+
+from byte import Byte, Short
+
 
 
 class Chip8:
     def __init__(self, rom):
-        self.ram = np.array([0 for _ in range(0x1000)], np.ubyte)
+        self.ram = [Byte(0) for _ in range(0x1000)]
 
         # load the rom
         for i, b in enumerate(rom):
             self.ram[0x200 + i] = b
 
         # the 15 "V" registers
-        self.regV = np.array([0 for _ in range(16)], np.ubyte)
+        self.regV = [Byte(0) for _ in range(16)]
 
         # the 16 bit "I" register
-        self.regI = np.ushort(0)
+        self.regI = Short(0)
 
         # program counter
-        self.regPC = np.ushort(0x200)
+        self.regPC = Short(0x200)
 
         # call stack
-        self.stack = np.array([0 for _ in range(16)], np.ushort)
+        self.stack = [Short(0) for _ in range(16)]
 
         # stack pointer
-        self.regSP = np.ubyte(0)
+        self.regSP = Byte(0)
 
-        self.delayT = np.ubyte(0)
-        self.soundT = np.ubyte(0)
+        self.delayT = Byte(0)
+        self.soundT = Byte(0)
 
-    def fetch(self) -> np.ushort:
-        return (np.ushort(self.ram[self.regPC]) << 8) | self.ram[self.regPC + 1]
+    def fetch(self) -> Short:
+        return Short.from_bytes(self.ram[self.regPC], self.ram[self.regPC + 1])
 
     def run(self):
         while True:
             instr = self.fetch()
 
-            print(hex(instr)[2:])
+            print(hex(instr))
 
             match instr:
                 # 00E0 clear display
@@ -55,7 +57,7 @@ class Chip8:
 
                 # 1nnn jump to address
                 case x if (x & 0xF000) >> 12 == 1:
-                    self.regPC = np.ushort(x & 0x0FFF)
+                    self.regPC = Short(x & 0x0FFF)
 
                 # 2nnn call adress
                 case x if (x & 0xF000) >> 12 == 2:
@@ -95,11 +97,15 @@ class Chip8:
                     kk = x << 8 >> 8
                     self.regV[vX] = kk
 
+                    self.regPC += 2
+
                 # 7xkk add kk to Vx
                 case x if (x & 0xF000) >> 12 == 7:
                     vX = x << 4 >> 12
                     kk = x << 8 >> 8
                     self.regV[vX] += kk
+
+                    self.regPC += 2
 
                 # 8xy? operators
                 case x if (x & 0xF000) >> 12 == 5:
@@ -111,7 +117,7 @@ class Chip8:
                     op = x & 0x000F
 
                     match op:
-                        case 0: # ass
+                        case 0: # assign
                             self.regV[vX] = self.regV[vY]
                         case 1: # OR
                             self.regV[vX] = self.regV[vX] | self.regV[vY]
@@ -121,16 +127,18 @@ class Chip8:
                             self.regV[vX] = self.regV[vX] ^ self.regV[vY]
                         case 4: # ADD
                             res = int(valX) + int(valY)
-                            self.regV[0xF] = np.ubyte(1) if res > 0xFF else np.ubyte(0)
-                            self.regV[vX] = np.ubyte(res)
+                            self.regV[0xF] = Byte(1) if res > 0xFF else Byte(0)
+                            self.regV[vX] = Byte(res)
 
                         case 5: # SUB
-                            self.regV[0xF] = np.ubyte(1) if valX > valY else np.ubyte(0)
+                            self.regV[0xF] = Byte(1) if valX > valY else Byte(0)
                             self.regV[vX] = valX - valY
 
                         case 1: # SHR
-                            self.regV[0xF] = np.ubyte(1) if valX & 1 == 1 else np.ubyte(0)
-                            self.regV[vX] = np.ubyte()
+                            self.regV[0xF] = Byte(1) if valX & 1 == 1 else Byte(0)
+                            self.regV[vX] = Byte()
+
+                    self.regPC += 2
 
                 # 9xy0 skip instrction if Vx != Vy
                 case x if (x & 0xF000) >> 12 == 9:
@@ -147,11 +155,11 @@ class Chip8:
 
                 # Bnnn jmp to nnn + reg V
                 case x if (x & 0xF000) >> 12 == 0xB:
-                    self.regPC = np.ushort(x & 0x0FFF) + self.regV
+                    self.regPC = Short(x & 0x0FFF) + self.regV
 
                 # Cxkk Vx = random byte & kk
                 case x if (x & 0xF000) >> 12 == 0xC:
-                    rnd=np.ubyte(np.random.bytes(1)[0])
+                    rnd = Byte(random.randint(0, 255))
                     vX = x << 4 >> 12
                     self.regV[vX] = rnd & x << 8 >> 8
 
@@ -208,7 +216,7 @@ def main():
     rom = None
 
     with open(sys.argv[1], "rb") as f:
-        rom = np.array([int(x) for x in f.read()], np.ubyte)
+        rom = [Byte(x) for x in f.read()]
 
     cpu = Chip8(rom)
     cpu.run()
