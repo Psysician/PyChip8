@@ -1,49 +1,64 @@
 
+def get_int(n):
+	return int(n.num if isinstance(n, Byte) else n)
+
 class Byte:
-	def __init__(self, num=None):
-		self.num = (int(num) & 0xFF) if num else 0
+	mask = 0xFF
+
+	def __init__(self, num=None, wrapped=False):
+		self.num = (int(num) & type(self).mask) if num else 0
+		self.wrapped = wrapped or (num and self.num != num)
+
 
 	def __add__(self, other):
-		return type(self)(self.num + (other.num if type(other) is type(self) else other))
+		return type(self)(self.num + get_int(other))
 
 	def __radd__(self, other):
 		return self.__add__(other)
 
 	def __iadd__(self, other):
-		self.num += other.num if type(other) is type(self) else other
+		self.num += get_int(other)
+		masked = self.num & type(self).mask
+		self.wrapped = masked != self.num
+		self.num &= masked
 		return self
 
 
 	def __sub__(self, other):
-		return type(self)(self.num - (other.num if type(other) is type(self) else other))
+		return type(self)(self.num - get_int(other))
 
 	def __rsub__(self, other):
-		return type(self)((other.num if type(other) is type(self) else other) - self.num)
+		return type(self)((get_int(other)) - self.num)
 
 	def __isub__(self, other):
-		self.num -= other.num if type(other) is type(self) else other
+		othernum = get_int(other)
+		self.wrapped = self.num < othernum
+		self.num -= othernum
 		return self
 
 
 	def __mul__(self, other):
-		return type(self)(self.num * (other.num if type(other) is type(self) else other))
+		return type(self)(self.num * (get_int(other)))
 
 	def __rmul__(self, other):
 		return self.__mul__(other)
 
 	def __imul__(self, other):
-		self.num *= other.num if type(other) is type(self) else other
+		self.num *= get_int(other)
+		masked = self.num & type(self).mask
+		self.wrapped = masked != self.num
+		self.num &= masked
 		return self
 
 
 	def __truediv__(self, other):
-		return type(self)(self.num // (other.num if type(other) is type(self) else other))
+		return type(self)(self.num // (get_int(other)))
 
 	def __rtruediv__(self, other):
-		return type(self)((other.num if type(other) is type(self) else other) // self.num)
+		return type(self)((get_int(other)) // self.num)
 
 	def __itruediv__(self, other):
-		self.num //= other.num if type(other) is type(self) else other
+		self.num //= get_int(other)
 		return self
 
 	def __floordiv__(self, other):
@@ -57,79 +72,87 @@ class Byte:
 
 
 	def __mod__(self, other):
-		return type(self)(self.num % (other.num if type(other) is type(self) else other))
+		return type(self)(self.num % (get_int(other)))
 	
 	def __rmod__(self, other):
-		return type(self)((other.num if type(other) is type(self) else other) % self.num)
+		return type(self)((get_int(other)) % self.num)
 
 	def __imod__(self, other):
-		self.num %= other.num if type(other) is type(self) else other
+		self.num %= get_int(other)
 		return self
 
 
 	def __pow__(self, other, mod):
-		return type(self)(self.num.__pow__((other.num if type(other) is type(self) else other), mod))
+		return type(self)(self.num.__pow__((get_int(other)), mod))
 	
 	def __rpow__(self, other, mod):
-		return type(self)(self.num.__rpow__((other.num if type(other) is type(self) else other), mod))
+		return type(self)(self.num.__rpow__((get_int(other)), mod))
 	
 	def __ipow__(self, other):
-		self.num **= other.num if type(other) is type(self) else other
+		self.num **= get_int(other)
+		masked = self.num & type(self).mask
+		self.wrapped = masked != self.num
+		self.num &= masked
 		return self
 
 
 	def __lshift__(self, other):
-		return type(self)(self.num << (other.num if type(other) is type(self) else other))
+		return type(self)(self.num << (get_int(other)))
 
 	def __rlshift__(self, other):
-		return type(self)((other.num if type(other) is type(self) else other) << self.num)
+		return type(self)((get_int(other)) << self.num)
 
 	def __ilshift__(self, other):
-		self.num <<= other.num if type(other) is type(self) else other
+		self.num <<= get_int(other)
+		self.num &= type(self).mask
 		return self
 
 	
 	def __rshift__(self, other):
-		return type(self)(self.num >> (other.num if type(other) is type(self) else other))
+		return type(self)(self.num >> (get_int(other)))
 
 	def __rrshift__(self, other):
-		return type(self)((other.num if type(other) is type(self) else other) >> self.num)
+		return type(self)((get_int(other)) >> self.num)
 
 	def __irshift__(self, other):
-		self.num >>= other.num if type(other) is type(self) else other
+		self.num >>= get_int(other)
+		self.num &= type(self).mask
 		return self
 
 
 	def __and__(self, other):
-		return type(self)(self.num & (other.num if type(other) is type(self) else other))
+		return type(self)(self.num & (get_int(other)))
 
 	def __rand__(self, other):
 		return self.__and__(other)
 
 	def __iand__(self, other):
-		self.num &= other.num if type(other) is type(self) else other
+		self.num &= get_int(other)
+		self.num &= type(self).mask
 		return self
 
 
 	def __or__(self, other):
-		return type(self)(self.num | (other.num if type(other) is type(self) else other))
+		return type(self)(self.num | (get_int(other)))
 
 	def __ror__(self, other):
 		return self.__or__(other)
 
 	def __ior__(self, other):
-		self.num |= other.num if type(other) is type(self) else other
+		self.num |= get_int(other)
+		self.num &= type(self).mask
 		return self
 
 
 	def __xor__(self, other):
-		return type(self)(self.num ^ (other.num if type(other) is type(self) else other))
+		return type(self)(self.num ^ (get_int(other)))
 
 	def __xor__(self, other):
 		return self.__xor__(other)
 
 	def __ixor__(self, other):
-		self.num ^= other.num if type(other) is type(self) else other
+		self.num ^= get_int(other)
+		self.num &= type(self).mask
 		return self
 
 
@@ -147,21 +170,21 @@ class Byte:
 
 
 	def __lt__(self, other):
-		return self.num.__lt__(other.num if type(other) is type(self) else other)
+		return self.num.__lt__(get_int(other))
 
 	def __le__(self, other):
-		return self.num.__le__(other.num if type(other) is type(self) else other)
+		return self.num.__le__(get_int(other))
 	
 	def __gt__(self, other):
-		return self.num.__gt__(other.num if type(other) is type(self) else other)
+		return self.num.__gt__(get_int(other))
 
 	def __ge__(self, other):
-		return self.num.__ge__(other.num if type(other) is type(self) else other)
+		return self.num.__ge__(get_int(other))
 
 	def __eq__(self, other):
-		return self.num.__eq__(other.num if type(other) is type(self) else other)
+		return self.num.__eq__(get_int(other))
 	def __ne__(self, other):
-		return self.num.__ne__(other.num if type(other) is type(self) else other)
+		return self.num.__ne__(get_int(other))
 
 
 	def __int__(self):
@@ -182,8 +205,42 @@ class Byte:
 
 
 class Short(Byte):
-	def __init__(self, num=None):
-		self.num = (int(num) & 0xFFFF) if num else 0
+	mask = 0xFFFF
 
+	@staticmethod
 	def from_bytes(a: Byte, b: Byte):
 		return Short((a.num << 8) | b.num)
+
+def test():
+	# overflow
+	x = Byte(0xFF) + 1
+	assert x == 0
+	assert x.wrapped == True
+
+	assert Short(0xFFFF) + 1 == 0
+
+	x += 1
+	assert x == 1
+	assert x.wrapped == False # wrapped is reset
+
+
+	# underflow
+	x = Byte(0) - 1
+	assert x == 0xFF
+	assert x.wrapped == True
+
+	assert Short(0) - 1 == 0xFFFF
+
+
+	# shifting out of bounds
+	assert Byte(1) << 8 == 0
+	x = Byte(1)
+	x <<= 8
+	assert x == 0
+
+	assert Short(1) << 8 == 0x100
+	assert Short(1) << 16 == 0
+
+	exit()
+
+#test()
