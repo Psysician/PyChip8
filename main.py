@@ -63,6 +63,7 @@ class Chip8:
                 case x if (x & 0xF000) >> 12 == 2:
                     self.regSP += 2
                     self.stack[self.regSP] = self.regPC
+                    self.regPC = Short(x & 0x0FFF)
 
                 # 3xkk skip instruction if Vx == kk
                 case x if (x & 0xF000) >> 12 == 3:
@@ -111,8 +112,6 @@ class Chip8:
                 case x if (x & 0xF000) >> 12 == 5:
                     vX = x << 4 >> 12
                     vY = x << 8 >> 12
-                    valX = self.regV[vX]
-                    valY = self.regV[vY]
 
                     op = x & 0x000F
 
@@ -126,17 +125,24 @@ class Chip8:
                         case 3: # XOR
                             self.regV[vX] = self.regV[vX] ^ self.regV[vY]
                         case 4: # ADD
-                            res = int(valX) + int(valY)
-                            self.regV[0xF] = Byte(1) if res > 0xFF else Byte(0)
-                            self.regV[vX] = Byte(res)
+                            self.regV[vX] = self.regV[vX] + self.regV[vY]
+                            self.regV[0xF] = Byte(1) if self.regV[vX].wrapped else Byte(0)
 
                         case 5: # SUB
-                            self.regV[0xF] = Byte(1) if valX > valY else Byte(0)
-                            self.regV[vX] = valX - valY
+                            self.regV[vX] = self.regV[vX] - self.regV[vY]
+                            self.regV[0xF] = Byte(1) if not self.regV[vX].wrapped else Byte(0)
 
-                        case 1: # SHR
-                            self.regV[0xF] = Byte(1) if valX & 1 == 1 else Byte(0)
-                            self.regV[vX] = Byte()
+                        case 6: # SHR
+                            self.regV[0xF] = Byte(1) if self.regV[vX] & 1 == 1 else Byte(0)
+                            self.regV[vX] //= 2
+
+                        case 7: # SUBN
+                            self.regV[vX] = self.regV[vY] - self.regV[vX]
+                            self.regV[0xF] = Byte(1) if not self.regV[vX].wrapped else Byte(0)
+
+                        case 0xE: # SHL
+                            self.regV[0xF] = Byte(1) if self.regV[vX] & (1 << 7) == 1 else Byte(0)
+                            self.regV[vX] *= 2
 
                     self.regPC += 2
 
@@ -152,55 +158,60 @@ class Chip8:
                 # Annn set reg I to nnn
                 case x if (x & 0xF000) >> 12 == 0xA:
                     self.regI = x << 4 >> 4
+                    self.regPC += 2
 
-                # Bnnn jmp to nnn + reg V
+                # Bnnn jmp to nnn + reg V0
                 case x if (x & 0xF000) >> 12 == 0xB:
-                    self.regPC = Short(x & 0x0FFF) + self.regV
+                    self.regPC = Short(x & 0x0FFF) + self.regV[0]
 
                 # Cxkk Vx = random byte & kk
                 case x if (x & 0xF000) >> 12 == 0xC:
                     rnd = Byte(random.randint(0, 255))
                     vX = x << 4 >> 12
                     self.regV[vX] = rnd & x << 8 >> 8
+                    self.regPC += 2
 
-                # Dxyn 
+                # Dxyn draw sprite
                 case x if (x & 0xF000) >> 12 == 0xD:
-                    pass
-                     
-                # Ex9E
-                case x if (x & 0xF0FF) == 0xE09E:
-                    pass
+                    self.regPC += 2
 
-                # ExA1
+                # Ex9E skip if key is pressed
+                case x if (x & 0xF0FF) == 0xE09E:
+                    raise NotImplemented
+
+                # ExA1 skip if key is not pressed
                 case x if (x & 0xF0FF) == 0xE0A1:
-                      pass
-                
-                # Fx07
+                    raise NotImplemented
+
+                # Fx07 Vx = DT
                 case x if (x & 0xF0FF) == 0xF007: 
                     vX = x << 4 >> 12
                     self.regV[vX] = self.delayT
-                
-                # Fx0A
+                    self.regPC += 2
+
+                # Fx0A Vx = next keypress
                 case x if (x & 0xF0FF) == 0xF00A:
-                    pass
+                    raise NotImplemented
 
                 # Fx15 Vx = Delay timer     Ich hab keine ahnung ob das hier sinn macht
                 #                           mein ausbilder zwingt mich übrigens dazu meine docs, kommentare und generell alles auf deutsch zu schreiben
                 case x if (x & 0xF0FF) == 0xF015:
                     Vx = x << 4 >> 12
-                    self.delayT = Vx
+                    self.delayT = self.regV[vX]
+                    self.regPC += 2
 
-                # Fx18
+                # Fx18 ST = Vx
                 case x if (x & 0xF0FF) == 0xF018:
                     vX = x << 4 >> 12
-                    self.soundT = Vx
+                    self.soundT = self.regV[vX]
+                    self.regPC += 2
 
                 # Fx1E regI 0 I + Vx    noch weniger plan 
                 case x if (x & 0xF0FF) == 0xF01E:
                     vX = x << 4 >> 12
-                    self.regI = self.regI + vX
-                
-                
+                    self.regI = self.regI + self.regV[vX]
+                    self.regPC += 2
+
 
                 case x:
                     raise Exception("unimplemented: ", hex(x)[2:])
