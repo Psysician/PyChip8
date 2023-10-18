@@ -158,8 +158,8 @@ class Chip8:
         self.clear_display()
 
 
-    def fetch(self) -> Short:
-        return Short.from_bytes(self.ram[self.regPC], self.ram[self.regPC + 1])
+    def fetch(self, addr) -> Short:
+        return Short.from_bytes(self.ram[addr], self.ram[addr + 1])
 
     def execute(self, instr: Short):
         match instr:
@@ -172,6 +172,7 @@ class Chip8:
             case 0x00EE:
                 self.regPC = self.stack[self.regSP]
                 self.regSP -= 2
+                self.regPC += 2
 
             # 0nnn jump to address (ignored)
             case x if x & 0xF000 == 0:
@@ -189,90 +190,90 @@ class Chip8:
 
             # 3xkk skip instruction if Vx == kk
             case x if (x & 0xF000) >> 12 == 3:
-                vX = x << 4 >> 12
-                kk = x << 8 >> 8
-                if self.regV[vX] == kk:
+                Vx = Byte(x << 4 >> 12)
+                kk = Byte(x << 8 >> 8)
+                if self.regV[Vx] == kk:
                     self.regPC += 4
                 else:
                     self.regPC += 2
 
             # 4xkk skip instruction if Vx != kk
             case x if (x & 0xF000) >> 12 == 4:
-                vX = x << 4 >> 12
-                kk = x << 8 >> 8
-                if self.regV[vX] != kk:
+                Vx = Byte(x << 4 >> 12)
+                kk = Byte(x << 8 >> 8)
+                if self.regV[Vx] != kk:
                     self.regPC += 4
                 else:
                     self.regPC += 2
 
             # 5xy0 skip instruction if Vx == Vy
             case x if (x & 0xF000) >> 12 == 5:
-                vX = x << 4 >> 12
-                vY = x << 8 >> 12
-                if self.regV[vX] == self.regV[vY]:
+                Vx = Byte(x << 4 >> 12)
+                Vy = Byte(x << 8 >> 12)
+                if self.regV[Vx] == self.regV[Vy]:
                     self.regPC += 4
                 else:
                     self.regPC += 2
 
             # 6xkk set Vx = kk
             case x if (x & 0xF000) >> 12 == 6:
-                vX = x << 4 >> 12
-                kk = x << 8 >> 8
-                self.regV[vX] = kk
+                Vx = Byte(x << 4 >> 12)
+                kk = Byte(x << 8 >> 8)
+                self.regV[Vx] = kk
 
                 self.regPC += 2
 
             # 7xkk add kk to Vx
             case x if (x & 0xF000) >> 12 == 7:
-                vX = x << 4 >> 12
-                kk = x << 8 >> 8
-                self.regV[vX] += kk
+                Vx = Byte(x << 4 >> 12)
+                kk = Byte(x << 8 >> 8)
+                self.regV[Vx] += kk
 
                 self.regPC += 2
 
             # 8xy? operators
-            case x if (x & 0xF000) >> 12 == 5:
-                vX = x << 4 >> 12
-                vY = x << 8 >> 12
+            case x if (x & 0xF000) >> 12 == 8:
+                Vx = Byte(x << 4 >> 12)
+                Vy = Byte(x << 8 >> 12)
 
-                op = x & 0x000F
+                op = Byte(x & 0x000F)
 
                 match op:
                     case 0: # assign
-                        self.regV[vX] = self.regV[vY]
+                        self.regV[Vx] = self.regV[Vy]
                     case 1: # OR
-                        self.regV[vX] = self.regV[vX] | self.regV[vY]
+                        self.regV[Vx] = self.regV[Vx] | self.regV[Vy]
                     case 2: # AND
-                        self.regV[vX] = self.regV[vX] & self.regV[vY]
+                        self.regV[Vx] = self.regV[Vx] & self.regV[Vy]
                     case 3: # XOR
-                        self.regV[vX] = self.regV[vX] ^ self.regV[vY]
+                        self.regV[Vx] = self.regV[Vx] ^ self.regV[Vy]
                     case 4: # ADD
-                        self.regV[vX] = self.regV[vX] + self.regV[vY]
-                        self.regV[0xF] = Byte(1) if self.regV[vX].wrapped else Byte(0)
+                        self.regV[Vx] = self.regV[Vx] + self.regV[Vy]
+                        self.regV[0xF] = Byte(1) if self.regV[Vx].wrapped else Byte(0)
 
                     case 5: # SUB
-                        self.regV[vX] = self.regV[vX] - self.regV[vY]
-                        self.regV[0xF] = Byte(1) if not self.regV[vX].wrapped else Byte(0)
+                        self.regV[Vx] = self.regV[Vx] - self.regV[Vy]
+                        self.regV[0xF] = Byte(1) if not self.regV[Vx].wrapped else Byte(0)
 
                     case 6: # SHR
-                        self.regV[0xF] = Byte(1) if self.regV[vX] & 1 == 1 else Byte(0)
-                        self.regV[vX] //= 2
+                        self.regV[0xF] = Byte(1) if self.regV[Vx] & 1 == 1 else Byte(0)
+                        self.regV[Vx] //= 2
 
                     case 7: # SUBN
-                        self.regV[vX] = self.regV[vY] - self.regV[vX]
-                        self.regV[0xF] = Byte(1) if not self.regV[vX].wrapped else Byte(0)
+                        self.regV[Vx] = self.regV[Vy] - self.regV[Vx]
+                        self.regV[0xF] = Byte(1) if not self.regV[Vx].wrapped else Byte(0)
 
                     case 0xE: # SHL
-                        self.regV[0xF] = Byte(1) if self.regV[vX] & (1 << 7) == 1 else Byte(0)
-                        self.regV[vX] *= 2
+                        self.regV[0xF] = Byte(1) if self.regV[Vx] & (1 << 7) == 1 else Byte(0)
+                        self.regV[Vx] *= 2
 
                 self.regPC += 2
 
             # 9xy0 skip instrction if Vx != Vy
             case x if (x & 0xF000) >> 12 == 9:
-                vX = x << 4 >> 12
-                vY = x << 8 >> 12
-                if self.regV[vX] != self.regV[vY]:
+                Vx = Byte(x << 4 >> 12)
+                Vy = Byte(x << 8 >> 12)
+                if self.regV[Vx] != self.regV[Vy]:
                     self.regPC += 4
                 else:
                     self.regPC += 2
@@ -288,18 +289,18 @@ class Chip8:
 
             # Cxkk Vx = random byte & kk
             case x if (x & 0xF000) >> 12 == 0xC:
+                Vx = Byte(x << 4 >> 12)
                 rnd = Byte(random.randint(0, 255))
-                vX = x << 4 >> 12
-                self.regV[vX] = rnd & x << 8 >> 8
+                self.regV[Vx] = rnd & x << 8 >> 8
                 self.regPC += 2
 
             # Dxyn draw sprite
             case x if (x & 0xF000) >> 12 == 0xD:
-                sX = x & 0x0F00 >> 8
-                sY = x & 0x00F0 >> 4
-                sN = x & 0x000F
+                Sx = Byte((x & 0x0F00) >> 8)
+                Sy = Byte((x & 0x00F0) >> 4)
+                Sn = Byte(x & 0x000F)
 
-                self.draw_sprite(self.ram[self.regI:self.regI+sN], sX, sY)
+                self.draw_sprite(self.ram[self.regI:self.regI+Sn], self.regV[Sx], self.regV[Sy])
 
                 self.regPC += 2
 
@@ -313,8 +314,8 @@ class Chip8:
 
             # Fx07 Vx = DT
             case x if (x & 0xF0FF) == 0xF007: 
-                vX = x << 4 >> 12
-                self.regV[vX] = self.delayT
+                Vx = Byte(x << 4 >> 12)
+                self.regV[Vx] = self.delayT
                 self.regPC += 2
 
             # Fx0A Vx = next keypress
@@ -324,20 +325,20 @@ class Chip8:
             # Fx15 Vx = Delay timer     Ich hab keine ahnung ob das hier sinn macht
             #                           mein ausbilder zwingt mich übrigens dazu meine docs, kommentare und generell alles auf deutsch zu schreiben
             case x if (x & 0xF0FF) == 0xF015:
-                vX = x << 4 >> 12
-                self.delayT = self.regV[vX]
+                Vx = Byte(x << 4 >> 12)
+                self.delayT = self.regV[Vx]
                 self.regPC += 2
 
             # Fx18 ST = Vx
             case x if (x & 0xF0FF) == 0xF018:
-                vX = x << 4 >> 12
-                self.soundT = self.regV[vX]
+                Vx = Byte(x << 4 >> 12)
+                self.soundT = self.regV[Vx]
                 self.regPC += 2
 
             # Fx1E I += Vx
             case x if (x & 0xF0FF) == 0xF01E:
-                vX = x << 4 >> 12
-                self.regI = self.regI + self.regV[vX]
+                Vx = Byte(x << 4 >> 12)
+                self.regI = self.regI + self.regV[Vx]
                 self.regPC += 2
 
 
@@ -348,10 +349,10 @@ class Chip8:
     def run(self):
         running = True
 
-        while running:
-            instr = self.fetch()
+        self.debug()
 
-            print(hex(instr))
+        while running:
+            instr = self.fetch(self.regPC)
 
             for event in pg.event.get():
                     if event.type == pg.QUIT:
@@ -360,6 +361,8 @@ class Chip8:
             self.execute(instr)
 
             pg.display.flip()
+
+            self.debug(instr)
 
 
     def draw_sprite(self, sprite, x, y):
@@ -373,7 +376,10 @@ class Chip8:
     def toggle_pixel(self, x, y):
         rect = pg.Rect(x * self.scale, y * self.scale, self.scale, self.scale)
 
+        self.regV[0xF] = Byte(0)
+
         if self.screen[x][y]:
+            self.regV[0xF] = Byte(1)
             pg.draw.rect(self.display, "black", rect)
         else:
             pg.draw.rect(self.display, "white", rect)
@@ -385,6 +391,46 @@ class Chip8:
     def clear_display(self):
         self.screen = [[False]*32]*64
         self.display.fill("black")
+
+
+    last_instr = None
+
+    def debug(self, instr: Short | None = None):
+        lines = 6
+        if not self.last_instr:
+            sys.stdout.write("\n"*(lines+1))
+        sys.stdout.write("\033[F"*lines)
+
+        def black(s: str):
+            return "\x1b[30m" + s + "\x1b[0m"
+
+        # instructions
+        sys.stdout.write(black(str(self.last_instr if self.last_instr else "    ")) + " ")
+        sys.stdout.write("\x1b[30;42m" + str(instr if instr else "....") + "\x1b[0m ")
+        sys.stdout.write(black(str(self.fetch(self.regPC))))
+        sys.stdout.write("\n")
+
+        # registers
+        sys.stdout.write(black("PC: ") + repr(self.regPC) + black(" I: ") + repr(self.regI) + black(" SP: ") + str(self.regSP))
+        sys.stdout.write("\n\n")
+
+        for i, vreg in enumerate(self.regV):
+            sys.stdout.write(black("V" + "{:01X}".format(i) + ":") + " " + str(vreg) + " ")
+            if i == 7:
+                sys.stdout.write("\n")
+        sys.stdout.write("\n\n")
+
+        sys.stdout.write(black("stack: "))
+        if self.regSP == 0:
+            sys.stdout.write("empty                                     ")
+        for i in range(self.regSP):
+            sys.stdout.write(str(self.stack[i]) + " ")
+
+
+        sys.stdout.flush()
+
+        self.last_instr = instr if instr else "...."
+
 
 
 def main():

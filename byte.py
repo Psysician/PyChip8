@@ -5,7 +5,11 @@ def get_int(n):
 class Byte:
 	mask = 0xFF
 
-	def __init__(self, num=None, wrapped=False):
+	def __init__(self, number=None, wrapped=False):
+		num = number
+		if isinstance(number, Byte):
+			num = number.num
+
 		self.num = (int(num) & type(self).mask) if num else 0
 		self.wrapped = wrapped or (num and self.num != num)
 
@@ -147,7 +151,7 @@ class Byte:
 	def __xor__(self, other):
 		return type(self)(self.num ^ (get_int(other)))
 
-	def __xor__(self, other):
+	def __rxor__(self, other):
 		return self.__xor__(other)
 
 	def __ixor__(self, other):
@@ -198,10 +202,10 @@ class Byte:
 		return self.num
 
 	def __str__(self):
-		return hex(self.num)
+		return "{:02X}".format(self.num)
 
 	def __repr__(self):
-		return hex(self.num)
+		return "0x" + self.__str__()
 
 
 class Short(Byte):
@@ -210,6 +214,9 @@ class Short(Byte):
 	@staticmethod
 	def from_bytes(a: Byte, b: Byte):
 		return Short((a.num << 8) | b.num)
+
+	def __str__(self):
+		return "{:04X}".format(self.num)
 
 def test():
 	# overflow
