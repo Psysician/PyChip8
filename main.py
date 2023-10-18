@@ -1,4 +1,5 @@
-import sys, random
+import sys, random, os
+os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
 import pygame as pg
 
 from byte import Byte, Short
@@ -122,7 +123,7 @@ FONT = [
 
 
 class Chip8:
-    def __init__(self, rom, scale=10):
+    def __init__(self, rom, scale=10, debug=False):
         self.ram = [Byte(0) for _ in range(0x1000)]
 
         for i, b in enumerate(FONT):
@@ -156,6 +157,8 @@ class Chip8:
 
         self.screen = None
         self.clear_display()
+
+        self.debug_on = debug
 
 
     def fetch(self, addr) -> Short:
@@ -300,7 +303,7 @@ class Chip8:
                 Sy = Byte((x & 0x00F0) >> 4)
                 Sn = Byte(x & 0x000F)
 
-                self.draw_sprite(self.ram[self.regI:self.regI+Sn], self.regV[Sx], self.regV[Sy])
+                self.draw_sprite(self.ram[self.regI:self.regI+Sn], int(self.regV[Sx]), int(self.regV[Sy]))
 
                 self.regPC += 2
 
@@ -320,7 +323,7 @@ class Chip8:
 
             # Fx0A Vx = next keypress
             case x if (x & 0xF0FF) == 0xF00A:
-                raise NotImplemented
+                pass
 
             # Fx15 Vx = Delay timer     Ich hab keine ahnung ob das hier sinn macht
             #                           mein ausbilder zwingt mich übrigens dazu meine docs, kommentare und generell alles auf deutsch zu schreiben
@@ -341,6 +344,14 @@ class Chip8:
                 self.regI = self.regI + self.regV[Vx]
                 self.regPC += 2
 
+            # Fx29 load glyph from font data corresponding to Vx
+            case x if (x & 0xF0FF) == 0xF029:
+                Vx = Byte(x << 4 >> 12)
+                # each glyph is 5 bytes,
+                # the font data is stored at address 0
+                self.regI = self.regV[Vx] * 5
+                self.regPC += 2
+
 
             case x:
                 raise Exception("unimplemented: ", hex(x)[2:])
@@ -349,27 +360,28 @@ class Chip8:
     def run(self):
         running = True
 
-        self.debug()
+        if self.debug_on:
+            self.debug()
 
         while running:
             instr = self.fetch(self.regPC)
 
             for event in pg.event.get():
-                    if event.type == pg.QUIT:
-                        running = False
+                if event.type == pg.QUIT:
+                    running = False
 
             self.execute(instr)
 
             pg.display.flip()
 
-            self.debug(instr)
+            if self.debug_on:
+                self.debug(instr)
 
 
     def draw_sprite(self, sprite, x, y):
         for sy, byte in enumerate(sprite):
             for sx, bit in enumerate(reversed(range(8))):
-                pix = (byte >> bit) & 1 == 1
-                if pix:
+                if (byte >> bit) & 1 == 1:
                     self.toggle_pixel(x + sx, y + sy)
 
 
@@ -387,9 +399,10 @@ class Chip8:
         self.screen[x][y] = not self.screen[x][y]
 
 
-
     def clear_display(self):
-        self.screen = [[False]*32]*64
+        self.screen = []
+        for _ in range(64):
+            self.screen.append([False]*32)
         self.display.fill("black")
 
 
@@ -430,16 +443,21 @@ class Chip8:
         sys.stdout.flush()
 
         self.last_instr = instr if instr else "...."
+        breakpoint()
 
 
 
 def main():
     rom = None
 
+    if len(sys.argv) < 2:
+        print("ERROR: Expected input ROM")
+        exit(1)
+
     with open(sys.argv[1], "rb") as f:
         rom = [Byte(x) for x in f.read()]
 
-    cpu = Chip8(rom)
+    cpu = Chip8(rom, debug=False)
     cpu.run()
 
 
