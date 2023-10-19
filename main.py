@@ -1,4 +1,4 @@
-import sys, random, os, msvcrt
+import sys, random, os
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
 import pygame as pg
 
@@ -122,8 +122,8 @@ FONT = [
 ]
 
 def get_key():
-    c = msvcrt.getch().decode('ASCII')
     k = pg.key.get_pressed()
+
     if k[pg.K_0]:
         return 0x0
     elif k[pg.K_1]:
@@ -156,42 +156,6 @@ def get_key():
         return 0xe
     elif k[pg.K_f]:
         return 0xf
-    elif c == "0":
-        return 0x0  
-    
-    elif c == "0":
-        return 0x0  
-    elif c == "1":
-        return 0x1
-    elif c == "2":
-        return 0x2
-    elif c == "3":
-        return 0x3
-    elif c == "4":
-        return 0x4
-    elif c == "5":
-        return 0x5
-    elif c == "6":
-        return 0x6
-    elif c == "7":
-        return 0x7
-    elif c == "8":
-        return 0x8
-    elif c == "9":
-        return 0x9
-    elif c == "a":
-        return 0xa
-    elif c == "b":
-        return 0xb
-    elif c == "c":
-        return 0xc
-    elif c == "d":
-        return 0xd
-    elif c == "e":
-        return 0xe
-    elif c == "f":
-        return 0xf
-
 
     return None
 
@@ -407,10 +371,6 @@ class Chip8:
             case x if (x & 0xF0FF) == 0xF00A:
                 Vx = Byte(x << 4 >> 12)
                 k = get_key()
-                while (k==None):
-                    k = get_key()
-                    print("stuck")
-                    pass
 
                 if k != None:
                     self.regV[Vx] = k
