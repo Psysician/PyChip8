@@ -1,4 +1,4 @@
-import sys, random, os
+import sys, random, os, msvcrt
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
 import pygame as pg
 
@@ -121,6 +121,79 @@ FONT = [
     0x80,
 ]
 
+def get_key():
+    c = msvcrt.getch().decode('ASCII')
+    k = pg.key.get_pressed()
+    if k[pg.K_0]:
+        return 0x0
+    elif k[pg.K_1]:
+        return 0x1
+    elif k[pg.K_2]:
+        return 0x2
+    elif k[pg.K_3]:
+        return 0x3
+    elif k[pg.K_4]:
+        return 0x4
+    elif k[pg.K_5]:
+        return 0x5
+    elif k[pg.K_6]:
+        return 0x6
+    elif k[pg.K_7]:
+        return 0x7
+    elif k[pg.K_8]:
+        return 0x8
+    elif k[pg.K_9]:
+        return 0x9
+    elif k[pg.K_a]:
+        return 0xa
+    elif k[pg.K_b]:
+        return 0xb
+    elif k[pg.K_c]:
+        return 0xc
+    elif k[pg.K_d]:
+        return 0xd
+    elif k[pg.K_e]:
+        return 0xe
+    elif k[pg.K_f]:
+        return 0xf
+    elif c == "0":
+        return 0x0  
+    
+    elif c == "0":
+        return 0x0  
+    elif c == "1":
+        return 0x1
+    elif c == "2":
+        return 0x2
+    elif c == "3":
+        return 0x3
+    elif c == "4":
+        return 0x4
+    elif c == "5":
+        return 0x5
+    elif c == "6":
+        return 0x6
+    elif c == "7":
+        return 0x7
+    elif c == "8":
+        return 0x8
+    elif c == "9":
+        return 0x9
+    elif c == "a":
+        return 0xa
+    elif c == "b":
+        return 0xb
+    elif c == "c":
+        return 0xc
+    elif c == "d":
+        return 0xd
+    elif c == "e":
+        return 0xe
+    elif c == "f":
+        return 0xf
+
+
+    return None
 
 class Chip8:
     def __init__(self, rom, scale=10, debug=False):
@@ -309,11 +382,20 @@ class Chip8:
 
             # Ex9E skip if key is pressed
             case x if (x & 0xF0FF) == 0xE09E:
-                raise NotImplemented
+                Vx = Byte(x << 4 >> 12)
+                if get_key() == self.regV[Vx]:
+                    self.regPC += 4
+                else:
+                    self.regPC += 2
 
             # ExA1 skip if key is not pressed
             case x if (x & 0xF0FF) == 0xE0A1:
-                raise NotImplemented
+                Vx = Byte(x << 4 >> 12)
+                k = get_key()
+                if k != self.regV[Vx]:
+                    self.regPC += 4
+                else:
+                    self.regPC += 2
 
             # Fx07 Vx = DT
             case x if (x & 0xF0FF) == 0xF007: 
@@ -321,9 +403,18 @@ class Chip8:
                 self.regV[Vx] = self.delayT
                 self.regPC += 2
 
-            # Fx0A Vx = next keypress
+            # Fx0A wait for key, store it in Vx
             case x if (x & 0xF0FF) == 0xF00A:
-                pass
+                Vx = Byte(x << 4 >> 12)
+                k = get_key()
+                while (k==None):
+                    k = get_key()
+                    print("stuck")
+                    pass
+
+                if k != None:
+                    self.regV[Vx] = k
+                    self.regPC += 2
 
             # Fx15 Vx = Delay timer     Ich hab keine ahnung ob das hier sinn macht
             #                           mein ausbilder zwingt mich übrigens dazu meine docs, kommentare und generell alles auf deutsch zu schreiben
@@ -332,7 +423,7 @@ class Chip8:
                 self.delayT = self.regV[Vx]
                 self.regPC += 2
 
-            # Fx18 ST = Vx
+            # Fx18 soundT = Vx
             case x if (x & 0xF0FF) == 0xF018:
                 Vx = Byte(x << 4 >> 12)
                 self.soundT = self.regV[Vx]
@@ -349,10 +440,40 @@ class Chip8:
                 Vx = Byte(x << 4 >> 12)
                 # each glyph is 5 bytes,
                 # the font data is stored at address 0
-                self.regI = self.regV[Vx] * 5
+                # Vx = wievieltes sprite
+                self.regI = Short(self.regV[Vx] * 5)
+                self.regPC += 2
+
+            # Fx33 store decimal representation of Vx at I, I+1 and I+2
+            case x if (x & 0xF0FF) == 0xF033:
+                Vx = Byte(x << 4 >> 12)
+                s = "{:03}".format(Vx.num)
+
+                self.ram[self.regI] = int(s[0])
+                self.ram[self.regI+1] = int(s[1])
+                self.ram[self.regI+2] = int(s[2])
+
                 self.regPC += 2
 
 
+            # Fx55 store V0 - Vx in memory
+            case x if (x & 0xF0FF) == 0xF055:
+                Vx = Byte(x << 4 >> 12)
+                for i in range(Vx):
+                    self.ram[self.regI+i] = self.regV[i]
+
+                self.regPC += 2
+
+            # Fx65 
+            case x if (x & 0xF0FF) == 0xF065:
+                Vx = Byte(x << 4 >> 12)
+                for i in range(Vx):
+                    self.regV[i] = self.ram[self.regI+i]
+
+                self.regPC += 2
+
+
+            
             case x:
                 raise Exception("unimplemented: ", hex(x)[2:])
 
@@ -379,10 +500,14 @@ class Chip8:
 
 
     def draw_sprite(self, sprite, x, y):
-        for sy, byte in enumerate(sprite):
-            for sx, bit in enumerate(reversed(range(8))):
+        sy = 0
+        for byte in sprite:
+            sx = 0
+            for bit in reversed(range(8)):
                 if (byte >> bit) & 1 == 1:
                     self.toggle_pixel(x + sx, y + sy)
+                sx += 1
+            sy += 1
 
 
     def toggle_pixel(self, x, y):

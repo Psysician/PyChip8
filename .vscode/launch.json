@@ -11,7 +11,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["owo.c8"]
+            "args": ["test_opcode.ch8"]
         }
     ]
 }
