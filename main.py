@@ -506,17 +506,22 @@ class Chip8:
 
 
     last_instr = None
+    inst_count = 0
 
     def debug(self, instr: Short | None = None):
-        lines = 6
+        lines = 7
         if not self.last_instr:
             sys.stdout.write("\n"*(lines+1))
         sys.stdout.write("\033[F"*lines)
+
+        if instr:
+            self.inst_count += 1
 
         def black(s: str):
             return "\x1b[30m" + s + "\x1b[0m"
 
         # instructions
+        sys.stdout.write("count: " + black(str(self.inst_count)) + "\n")
         sys.stdout.write(black(str(self.last_instr if self.last_instr else "    ")) + " ")
         sys.stdout.write("\x1b[30;42m" + str(instr if instr else "....") + "\x1b[0m ")
         sys.stdout.write(black(str(self.fetch(self.regPC))))
