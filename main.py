@@ -521,7 +521,7 @@ class Chip8:
             return "\x1b[30m" + s + "\x1b[0m"
 
         # instructions
-        sys.stdout.write("count: " + black(str(self.inst_count)) + "\n")
+        sys.stdout.write(black("count: ") + str(self.inst_count) + "\n")
         sys.stdout.write(black(str(self.last_instr if self.last_instr else "    ")) + " ")
         sys.stdout.write("\x1b[30;42m" + str(instr if instr else "....") + "\x1b[0m ")
         sys.stdout.write(black(str(self.fetch(self.regPC))))
