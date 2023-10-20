@@ -441,12 +441,22 @@ class Chip8:
 
 
     def run(self):
+        clock = pg.time.Clock()
+        acc = 0
         running = True
 
         if self.debug_on:
             self.debug()
 
         while running:
+            acc += clock.get_time()
+
+            if acc >= 17:
+                if self.delayT > 0:
+                    self.delayT -= 1
+                if self.soundT > 0:
+                    self.soundT -= 1
+
             instr = self.fetch(self.regPC)
 
             for event in pg.event.get():
@@ -459,6 +469,8 @@ class Chip8:
 
             if self.debug_on:
                 self.debug(instr)
+
+        clock.tick(60)
 
 
     def draw_sprite(self, sprite, x, y):
