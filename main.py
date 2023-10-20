@@ -2,7 +2,7 @@ import sys, random, os
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
 import pygame as pg
 
-from byte import Byte, Short
+from byte import Byte, Short, TypedArray
 
 
 pg.init()
@@ -161,17 +161,17 @@ def get_key():
 
 class Chip8:
     def __init__(self, rom, scale=10, debug=False):
-        self.ram = [Byte(0) for _ in range(0x1000)]
+        self.ram = TypedArray(Byte, [Byte(0) for _ in range(0x1000)])
 
         for i, b in enumerate(FONT):
-            self.ram[i] = b
+            self.ram[i] = Byte(b)
 
         # load the rom
         for i, b in enumerate(rom):
             self.ram[0x200 + i] = b
 
         # the 15 "V" registers
-        self.regV = [Byte(0) for _ in range(16)]
+        self.regV = TypedArray(Byte, [Byte(0) for _ in range(16)])
 
         # the 16 bit "I" register
         self.regI = Short(0)
@@ -180,7 +180,7 @@ class Chip8:
         self.regPC = Short(0x200)
 
         # call stack
-        self.stack = [Short(0) for _ in range(16)]
+        self.stack = TypedArray(Short, [Short(0) for _ in range(16)])
 
         # stack pointer
         self.regSP = Byte(0)
@@ -210,8 +210,10 @@ class Chip8:
 
             # 00EE return from subroutine
             case 0x00EE:
+                if self.regSP == 0:
+                    return
                 self.regPC = self.stack[self.regSP]
-                self.regSP -= 2
+                self.regSP -= 1
                 self.regPC += 2
 
             # 0nnn jump to address (ignored)
@@ -224,7 +226,7 @@ class Chip8:
 
             # 2nnn call adress
             case x if (x & 0xF000) >> 12 == 2:
-                self.regSP += 2
+                self.regSP += 1
                 self.stack[self.regSP] = self.regPC
                 self.regPC = Short(x & 0x0FFF)
 
@@ -347,7 +349,8 @@ class Chip8:
             # Ex9E skip if key is pressed
             case x if (x & 0xF0FF) == 0xE09E:
                 Vx = Byte(x << 4 >> 12)
-                if get_key() == self.regV[Vx]:
+                k = get_key()
+                if k and k == self.regV[Vx]:
                     self.regPC += 4
                 else:
                     self.regPC += 2
@@ -356,7 +359,7 @@ class Chip8:
             case x if (x & 0xF0FF) == 0xE0A1:
                 Vx = Byte(x << 4 >> 12)
                 k = get_key()
-                if k != self.regV[Vx]:
+                if k and k != self.regV[Vx]:
                     self.regPC += 4
                 else:
                     self.regPC += 2
@@ -372,8 +375,8 @@ class Chip8:
                 Vx = Byte(x << 4 >> 12)
                 k = get_key()
 
-                if k != None:
-                    self.regV[Vx] = k
+                if not k is None:
+                    self.regV[Vx] = Byte(k)
                     self.regPC += 2
 
             # Fx15 Vx = Delay timer     Ich hab keine ahnung ob das hier sinn macht
@@ -409,9 +412,9 @@ class Chip8:
                 Vx = Byte(x << 4 >> 12)
                 s = "{:03}".format(Vx.num)
 
-                self.ram[self.regI] = int(s[0])
-                self.ram[self.regI+1] = int(s[1])
-                self.ram[self.regI+2] = int(s[2])
+                self.ram[self.regI] = Byte(int(s[0]))
+                self.ram[self.regI+1] = Byte(int(s[1]))
+                self.ram[self.regI+2] = Byte(int(s[2]))
 
                 self.regPC += 2
 
@@ -433,7 +436,6 @@ class Chip8:
                 self.regPC += 2
 
 
-            
             case x:
                 raise Exception("unimplemented: ", hex(x)[2:])
 
@@ -528,7 +530,7 @@ class Chip8:
         sys.stdout.flush()
 
         self.last_instr = instr if instr else "...."
-        breakpoint()
+        #breakpoint()
 
 
 
@@ -542,7 +544,7 @@ def main():
     with open(sys.argv[1], "rb") as f:
         rom = [Byte(x) for x in f.read()]
 
-    cpu = Chip8(rom, debug=False)
+    cpu = Chip8(rom, debug=True)
     cpu.run()
 
 

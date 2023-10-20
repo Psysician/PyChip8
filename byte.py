@@ -218,6 +218,35 @@ class Short(Byte):
 	def __str__(self):
 		return "{:04X}".format(self.num)
 
+
+class TypedArray:
+	def __init__(self, ty, val=None):
+		self.ty = ty
+		self.vals = []
+
+		if not val is None:
+			if type(val) is list:
+				for v in val:
+					self.append(v)
+			else:
+				self.append(val)
+
+	def append(self, val):
+		if type(val) == self.ty:
+			self.vals.append(val)
+		else:
+			raise ValueError(f"{type(val)} != {self.ty}")
+
+	def __getitem__(self, key):
+		return self.vals.__getitem__(key)
+
+	def __setitem__(self, key, val):
+		if type(val) == self.ty:
+			self.vals.__setitem__(key, val)
+		else:
+			raise ValueError(f"{type(val)} != {self.ty}")
+
+
 def test():
 	# overflow
 	x = Byte(0xFF) + 1
